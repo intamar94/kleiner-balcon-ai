@@ -23,4 +23,10 @@ export default async function handler(req, res) {
   if (text.includes("relax")) {
     recommendation = {
       name: "Set Balcony Zen Lounge",
-      price: "49
+      price: "49.99€",
+      reason: "Ideal para descansar"
+    };
+  }
+
+  return res.status(200).json(recommendation);
+}
