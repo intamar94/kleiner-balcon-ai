@@ -28,23 +28,31 @@ async function buscar() {
 
   const data = await res.json();
 
-  document.getElementById("resultado").innerHTML = `
-    <div style="margin-top:20px;padding:15px;border:1px solid #ccc;border-radius:10px;max-width:400px;">
-      <h3>Recomendación</h3>
-      <p style="margin-bottom:10px;">${data.recommendation}</p>
+document.getElementById("resultado").innerHTML = `
+  <div style="margin-top:20px;padding:20px;border:1px solid #ddd;border-radius:12px;max-width:420px;background:#fafafa;">
+    
+    <h3 style="margin-bottom:10px;">🌿 Recomendación</h3>
 
-<p style="font-weight:bold;">Desde 29,99€</p>
+    <p style="margin-bottom:10px;">
+      ${data.recommendation}
+    </p>
 
-<ul style="font-size:14px; margin-top:10px;">
-  <li>✔ Ideal para balcones pequeños</li>
-  <li>✔ Fácil de montar</li>
-  <li>✔ Todo incluido</li>
-</ul>
-      <button style="margin-top:10px;padding:10px 15px;background:black;color:white;border:none;border-radius:5px;">
-        Ver set
-      </button>
-    </div>
-  `;
+    <p style="font-weight:bold; font-size:18px;">
+      Desde 29,99€
+    </p>
+
+    <ul style="font-size:14px; margin-top:10px; line-height:1.6;">
+      <li>✔ Ideal para balcones pequeños</li>
+      <li>✔ Fácil de montar</li>
+      <li>✔ Todo incluido</li>
+    </ul>
+
+    <button style="margin-top:15px;padding:12px 18px;background:black;color:white;border:none;border-radius:8px;cursor:pointer;">
+      Ver set
+    </button>
+
+  </div>
+`;
 }
 </script>
 
