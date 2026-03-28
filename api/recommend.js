@@ -3,26 +3,24 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    let body = '';
+  const { message } = req.body;
+  const text = message.toLowerCase();
 
-    await new Promise((resolve) => {
-      req.on('data', chunk => {
-        body += chunk;
-      });
-      req.on('end', resolve);
-    });
+  let recommendation = {
+    name: "Set Básico",
+    price: "29.99€",
+    reason: "Ideal para empezar"
+  };
 
-    const { message } = JSON.parse(body || '{}');
-
-    return res.status(200).json({
-      recommendation: `Recomendación para: ${message || 'sin mensaje'}`
-    });
-
-  } catch (error) {
-    return res.status(500).json({
-      error: 'Internal error',
-      detail: error.message
-    });
+  if (text.includes("pequeño")) {
+    recommendation = {
+      name: "Set Vegetales Compactos",
+      price: "29.99€",
+      reason: "Perfecto para balcones pequeños"
+    };
   }
-}
+
+  if (text.includes("relax")) {
+    recommendation = {
+      name: "Set Balcony Zen Lounge",
+      price: "49
