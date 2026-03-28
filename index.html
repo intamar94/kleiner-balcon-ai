@@ -1,9 +1,37 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Kleiner Balkon AI</title>
-  </head>
-  <body>
-    <h1>AI listo</h1>
-  </body>
+<head>
+  <title>Kleiner Balkon AI</title>
+</head>
+<body>
+
+<h1>Diseña tu balcón con IA</h1>
+
+<input id="input" placeholder="Ej: balcón pequeño, poco sol, 50€">
+<button onclick="buscar()">Buscar</button>
+
+<pre id="resultado"></pre>
+
+<script>
+async function buscar() {
+  const mensaje = document.getElementById("input").value;
+
+  const res = await fetch("/api/recommend", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      message: mensaje
+    })
+  });
+
+  const data = await res.json();
+
+  document.getElementById("resultado").innerText =
+    JSON.stringify(data, null, 2);
+}
+</script>
+
+</body>
 </html>
