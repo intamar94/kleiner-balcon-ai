@@ -28,8 +28,15 @@ async function buscar() {
 
   const data = await res.json();
 
-  document.getElementById("resultado").innerText =
-    JSON.stringify(data, null, 2);
+  document.getElementById("resultado").innerHTML = `
+  <div style="margin-top:20px;padding:15px;border:1px solid #ccc;border-radius:10px;max-width:400px;">
+    <h3>Recomendación</h3>
+    <p>${data.recommendation}</p>
+    <button style="margin-top:10px;padding:10px 15px;background:black;color:white;border:none;border-radius:5px;">
+      Ver set
+    </button>
+  </div>
+`;
 }
 </script>
 
