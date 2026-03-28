@@ -1,9 +1,19 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+
+  // 🔓 CORS (clave para Shopify)
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
   }
 
-  const { message } = req.body;
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const { message } = req.body || {};
 
   let response = {
     name: "Set Vegetales Compactos",
@@ -12,7 +22,7 @@ export default async function handler(req, res) {
     link: "https://kleinerbalkon.com/products/set-vegetales"
   };
 
-  if (message.toLowerCase().includes("50")) {
+  if (message && message.toLowerCase().includes("50")) {
     response = {
       name: "Set Balcony Zen Lounge",
       price: "49,99€",
