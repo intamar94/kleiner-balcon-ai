@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  // ✅ CORS
+  // ✅ CORS (para que Shopify funcione)
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -24,38 +24,56 @@ export default async function handler(req, res) {
     const numberMatch = text.match(/\d+/);
     const budget = numberMatch ? parseInt(numberMatch[0]) : 0;
 
-    let response;
-
-    // 🌿 lógica básica (luego ampliamos a los 18 sets)
-    if (budget >= 120) {
-      response = {
-        name: "Set Balcony Zen Lounge",
-        price: "99,99€",
-        reason: "Perfecto para relajarte en tu balcón",
-        link: "/products/set-zen"
-      };
-    } else if (budget >= 70) {
-      response = {
-        name: "Set Café en Balcón",
-        price: "59,99€",
-        reason: "Ideal para desayunar o leer",
-        link: "/products/set-cafe"
-      };
-    } else if (budget >= 40) {
-      response = {
+    // 🧩 TUS SETS (puedes ampliar a los 18)
+    const sets = [
+      {
+        name: "Set Hierbas de Cocina",
+        price: "29,99€",
+        tags: ["cocina", "hierbas"],
+        link: "/products/set-hierbas"
+      },
+      {
         name: "Set Vegetales Compactos",
         price: "29,99€",
-        reason: "Ideal para balcones pequeños",
+        tags: ["plantas", "vegetales", "pequeño"],
         link: "/products/set-vegetales"
-      };
-    } else {
-      response = {
-        name: "Set Básico Balcón",
-        price: "19,99€",
-        reason: "Una opción simple para empezar",
-        link: "/products/set-basico"
-      };
+      },
+      {
+        name: "Set Balcony Zen Lounge",
+        price: "99,99€",
+        tags: ["relax", "zen"],
+        link: "/products/set-zen"
+      },
+      {
+        name: "Set Café en Balcón",
+        price: "59,99€",
+        tags: ["cafe", "desayuno"],
+        link: "/products/set-cafe"
+      }
+    ];
+
+    let bestMatch = sets[0];
+
+    // 🔍 buscar por intención
+    for (let set of sets) {
+      for (let tag of set.tags) {
+        if (text.includes(tag)) {
+          bestMatch = set;
+        }
+      }
     }
+
+    // 💰 ajustar por presupuesto
+    if (budget >= 100) {
+      bestMatch = sets.find(s => s.name.includes("Zen")) || bestMatch;
+    }
+
+    const response = {
+      name: bestMatch.name,
+      price: bestMatch.price,
+      reason: "Recomendado según tu búsqueda",
+      link: bestMatch.link
+    };
 
     return res.status(200).json(response);
 
