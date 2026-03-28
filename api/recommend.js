@@ -4,15 +4,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message } = req.body;
+    let body = '';
+
+    await new Promise((resolve) => {
+      req.on('data', chunk => {
+        body += chunk;
+      });
+      req.on('end', resolve);
+    });
+
+    const { message } = JSON.parse(body || '{}');
 
     return res.status(200).json({
-      recommendation: `Recomendación para: ${message}`
+      recommendation: `Recomendación para: ${message || 'sin mensaje'}`
     });
 
   } catch (error) {
     return res.status(500).json({
-      error: 'Internal error'
+      error: 'Internal error',
+      detail: error.message
     });
   }
 }
