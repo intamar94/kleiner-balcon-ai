@@ -31,7 +31,15 @@ async function buscar() {
   document.getElementById("resultado").innerHTML = `
     <div style="margin-top:20px;padding:15px;border:1px solid #ccc;border-radius:10px;max-width:400px;">
       <h3>Recomendación</h3>
-      <p>${data.recommendation}</p>
+      <p style="margin-bottom:10px;">${data.recommendation}</p>
+
+<p style="font-weight:bold;">Desde 29,99€</p>
+
+<ul style="font-size:14px; margin-top:10px;">
+  <li>✔ Ideal para balcones pequeños</li>
+  <li>✔ Fácil de montar</li>
+  <li>✔ Todo incluido</li>
+</ul>
       <button style="margin-top:10px;padding:10px 15px;background:black;color:white;border:none;border-radius:5px;">
         Ver set
       </button>
