@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -14,34 +13,43 @@ export default async function handler(req, res) {
 
   const { message } = req.body;
 
+  const BASE_URL = "https://kleiner-balkon.myshopify.com";
+
   const products = [
     {
       name: "Set Kräuter Küche",
       price: "19,99€",
-      description: "Perfekt für frische Kräuter auf kleinen Balkonen",
-      tags: ["klein", "küche", "kräuter"],
-      link: "/products/kraeuter-set"
+      description: "Frische Kräuter für kleine Balkone",
+      tags: ["klein", "küche", "pflanzen"],
+      link: BASE_URL + "/products/kraeuter-set"
     },
     {
       name: "Set Kompakte Gemüse",
       price: "29,99€",
-      description: "Ideal für kleine Balkone mit wenig Platz",
+      description: "Ideal für kleine Balkone",
       tags: ["klein", "gemüse"],
-      link: "/products/gemuese-set"
+      link: BASE_URL + "/products/gemuese-set"
     },
     {
       name: "Set Balkon Zen Lounge",
       price: "49,99€",
       description: "Perfekt zum Entspannen",
       tags: ["relax", "komfort"],
-      link: "/products/zen-set"
+      link: BASE_URL + "/products/zen-set"
     },
     {
       name: "Set Café Balkon",
       price: "39,99€",
-      description: "Für Kaffee und Genuss",
+      description: "Kaffeegenuss draußen",
       tags: ["cafe", "entspannen"],
-      link: "/products/cafe-set"
+      link: BASE_URL + "/products/cafe-set"
+    },
+    {
+      name: "Set Beleuchtung Ambiente",
+      price: "34,99€",
+      description: "Atmosphäre für den Abend",
+      tags: ["licht", "abend"],
+      link: BASE_URL + "/products/licht-set"
     }
   ];
 
@@ -55,7 +63,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "gpt-5-mini",
         input: `
-Du bist ein Experte für Balkon-Produkte.
+Du bist ein Verkaufsberater für Balkon-Produkte.
 
 User Anfrage:
 "${message}"
@@ -63,9 +71,14 @@ User Anfrage:
 Produkte:
 ${JSON.stringify(products)}
 
-Wähle die 2 besten Produkte.
+Regeln:
+- Wähle IMMER 3 Produkte
+- Priorisiere Relevanz (Thema + Budget)
+- Wenn unklar → zeige Bestseller
+- Schreibe auf Deutsch
+- Grund kurz und verkaufsstark
 
-Antworte NUR so (kein extra Text):
+Antwortformat (nur JSON):
 
 {
   "results": [
@@ -83,7 +96,6 @@ Antworte NUR so (kein extra Text):
 
     const data = await response.json();
 
-    // 🔥 solución robusta (NO rompe si IA añade texto)
     let text = data.output?.[0]?.content?.[0]?.text || "";
 
     const jsonStart = text.indexOf("{");
@@ -93,21 +105,32 @@ Antworte NUR so (kein extra Text):
       text = text.substring(jsonStart, jsonEnd + 1);
     }
 
-    const parsed = JSON.parse(text);
+    let parsed;
+
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // fallback inteligente (SIEMPRE 3)
+      parsed = {
+        results: products.slice(0, 3).map(p => ({
+          name: p.name,
+          price: p.price,
+          reason: "Beliebte Wahl für viele Kunden",
+          link: p.link
+        }))
+      };
+    }
 
     return res.status(200).json(parsed);
 
   } catch (err) {
-    console.error(err);
     return res.status(200).json({
-      results: [
-        {
-          name: "Set Kompakte Gemüse",
-          price: "29,99€",
-          reason: "Gute Standard-Empfehlung für deinen Balkon",
-          link: "/products/gemuese-set"
-        }
-      ]
+      results: products.slice(0, 3).map(p => ({
+        name: p.name,
+        price: p.price,
+        reason: "Empfohlene Standard-Auswahl",
+        link: p.link
+      }))
     });
   }
 }
