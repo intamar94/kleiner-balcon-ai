@@ -1,78 +1,66 @@
 export default async function handler(req, res) {
-  // 🔐 CORS (obligatorio para Shopify)
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   try {
-    const { message } = req.body;
+    const { query } = req.body;
 
-    // 🛒 FETCH PRODUCTOS DE SHOPIFY
-    const shop = "kleiner-balkon.myshopify.com";
-    const accessToken = process.env.SHOPIFY_ADMIN_TOKEN;
+    const SHOP = process.env.SHOPIFY_STORE_DOMAIN;
+    const TOKEN = process.env.SHOPIFY_STOREFRONT_TOKEN;
 
-    const shopRes = await fetch(
-      `https://${shop}/admin/api/2024-01/products.json?limit=20`,
-      {
-        headers: {
-          "X-Shopify-Access-Token": accessToken,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const shopData = await shopRes.json();
-
-    const products = shopData.products.map(p => ({
-      title: p.title,
-      price: p.variants[0].price + "€",
-      link: `https://${shop}/products/${p.handle}`
-    }));
-
-    // 🤖 IA
-    const openaiRes = await fetch("https://api.openai.com/v1/responses", {
+    const shopifyRes = await fetch(`https://${SHOP}/api/2024-01/graphql.json`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-Shopify-Storefront-Access-Token": TOKEN,
       },
       body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        input: `
-User search: ${message}
-
-Products:
-${products.map(p => `${p.title} - ${p.price}`).join("\n")}
-
-Pick the 3 BEST products for this user.
-Respond ONLY in JSON:
-
-{
-  "results": [
-    { "title": "...", "reason": "...", "price": "...", "link": "..." }
-  ]
-}
-`
-      })
+        query: `
+        {
+          products(first: 20) {
+            edges {
+              node {
+                id
+                title
+                description
+                handle
+                images(first:1){
+                  edges{
+                    node{
+                      url
+                    }
+                  }
+                }
+                variants(first:1){
+                  edges{
+                    node{
+                      price{
+                        amount
+                        currencyCode
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        `,
+      }),
     });
 
-    const aiData = await openaiRes.json();
+    const data = await shopifyRes.json();
 
-    const text = aiData.output[0].content[0].text;
+    const products = data.data.products.edges.map(e => e.node);
 
-    const parsed = JSON.parse(text);
+    // 🔥 FILTRO INTELIGENTE SIMPLE
+    const filtered = products.filter(p =>
+      (p.title + p.description).toLowerCase().includes(query.toLowerCase())
+    );
 
-    return res.status(200).json(parsed);
+    // fallback si no hay match
+    const results = (filtered.length > 0 ? filtered : products).slice(0, 3);
 
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.status(200).json(results);
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 }
