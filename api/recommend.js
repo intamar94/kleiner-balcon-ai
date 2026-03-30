@@ -1,6 +1,5 @@
 export default async function handler(req, res) {
 
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -14,7 +13,14 @@ export default async function handler(req, res) {
   try {
     const { query } = req.body;
 
-    // 🛒 1. TRAER PRODUCTOS (SIN QUERY)
+    // 🧠 EXTRAER PRESUPUESTO
+    let budget = null;
+    const match = query.match(/(\d+)/);
+    if (match) {
+      budget = parseFloat(match[1]);
+    }
+
+    // 🛒 TRAER PRODUCTOS
     const response = await fetch(
       `https://${process.env.SHOPIFY_STORE_DOMAIN}/api/2023-10/graphql.json`,
       {
@@ -55,19 +61,30 @@ export default async function handler(req, res) {
 
     let products = data?.data?.products?.edges?.map(e => e.node) || [];
 
-    // 🔍 2. FILTRO INTELIGENTE (LOCAL)
+    // 🔍 FILTRO POR TEXTO
     const q = query.toLowerCase();
-
     let filtered = products.filter(p =>
       (p.title + " " + p.description).toLowerCase().includes(q)
     );
 
-    // 🔥 3. SI NO HAY MATCH → MOSTRAR IGUAL
+    // 🔥 SI NO HAY MATCH → usar todos
     if (filtered.length === 0) {
       filtered = products;
     }
 
-    // 🎯 4. SOLO 3 RESULTADOS
+    // 🎯 FILTRO REAL DE PRESUPUESTO
+    if (budget) {
+      const budgetFiltered = filtered.filter(p => {
+        const price = parseFloat(p.variants.edges[0].node.price.amount);
+        return price <= budget;
+      });
+
+      // ⚠️ SOLO aplicar si hay resultados válidos
+      if (budgetFiltered.length > 0) {
+        filtered = budgetFiltered;
+      }
+    }
+
     const result = filtered.slice(0, 3);
 
     return res.status(200).json(result);
