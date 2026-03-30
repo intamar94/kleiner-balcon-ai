@@ -1,5 +1,10 @@
 export default async function handler(req, res) {
-  // permitir POST
+
+  // permitir POST desde Shopify
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Use POST" });
   }
@@ -7,81 +12,57 @@ export default async function handler(req, res) {
   try {
     const { query } = req.body;
 
-    // 🔹 1. obtener productos de Shopify
-    const shopRes = await fetch(
-      `https://${process.env.SHOPIFY_STORE_DOMAIN}/api/2024-01/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": process.env.SHOPIFY_STOREFRONT_TOKEN,
-        },
-        body: JSON.stringify({
-          query: `
-          {
-            products(first: 20) {
-              edges {
-                node {
-                  title
-                  handle
-                  images(first: 1) {
-                    edges {
-                      node { url }
-                    }
-                  }
-                  variants(first: 1) {
-                    edges {
-                      node {
-                        price { amount }
-                      }
-                    }
-                  }
+    const SHOP = process.env.SHOPIFY_STORE_DOMAIN;
+    const TOKEN = process.env.SHOPIFY_STOREFRONT_TOKEN;
+
+    // 🔹 1. traer productos reales
+    const response = await fetch(`https://${SHOP}/api/2024-01/graphql.json`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Storefront-Access-Token": TOKEN,
+      },
+      body: JSON.stringify({
+        query: `
+        {
+          products(first: 20) {
+            edges {
+              node {
+                title
+                handle
+                description
+                images(first:1){
+                  edges{ node{ url } }
+                }
+                variants(first:1){
+                  edges{ node{ price{ amount } } }
                 }
               }
             }
           }
+        }
         `,
-        }),
-      }
-    );
-
-    const shopData = await shopRes.json();
-    const products = shopData.data.products.edges.map(e => e.node);
-
-    // 🔹 2. IA (elige 3 productos)
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "Elige 3 productos relevantes según la intención del usuario.",
-          },
-          {
-            role: "user",
-            content: `Usuario: ${query}
-Productos: ${products.map(p => p.title).join(", ")}`,
-          },
-        ],
       }),
     });
 
-    const aiData = await aiRes.json();
-    const text = aiData.choices[0].message.content;
+    const data = await response.json();
 
-    // 🔹 3. filtrar productos
-    const selected = products.filter(p =>
-      text.toLowerCase().includes(p.title.toLowerCase())
-    ).slice(0, 3);
+    const products = data?.data?.products?.edges?.map(e => e.node) || [];
 
-    return res.status(200).json(selected);
+    // 🔹 2. filtro simple (estable)
+    const q = query.toLowerCase();
 
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const filtered = products.filter(p =>
+      (p.title + " " + p.description).toLowerCase().includes(q)
+    );
+
+    // 🔹 3. fallback SIEMPRE muestra algo
+    const results = (filtered.length > 0 ? filtered : products).slice(0, 3);
+
+    return res.status(200).json(results);
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Server error" });
   }
 }
