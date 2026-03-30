@@ -1,50 +1,38 @@
 export default async function handler(req, res) {
+  // permitir POST
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ error: "Use POST" });
   }
 
   try {
     const { query } = req.body;
 
-    if (!query) {
-      return res.status(400).json({ error: "Missing query" });
-    }
-
-    const SHOP = process.env.SHOPIFY_STORE_DOMAIN;
-    const TOKEN = process.env.SHOPIFY_STOREFRONT_TOKEN;
-
-    const shopifyRes = await fetch(
-      `https://${SHOP}/api/2024-01/graphql.json`,
+    // 🔹 1. obtener productos de Shopify
+    const shopRes = await fetch(
+      `https://${process.env.SHOPIFY_STORE_DOMAIN}/api/2024-01/graphql.json`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": TOKEN,
+          "X-Shopify-Storefront-Access-Token": process.env.SHOPIFY_STOREFRONT_TOKEN,
         },
         body: JSON.stringify({
           query: `
           {
-            products(first: 30) {
+            products(first: 20) {
               edges {
                 node {
-                  id
                   title
-                  description
                   handle
-                  images(first:1){
-                    edges{
-                      node{
-                        url
-                      }
+                  images(first: 1) {
+                    edges {
+                      node { url }
                     }
                   }
-                  variants(first:1){
-                    edges{
-                      node{
-                        price{
-                          amount
-                          currencyCode
-                        }
+                  variants(first: 1) {
+                    edges {
+                      node {
+                        price { amount }
                       }
                     }
                   }
@@ -52,46 +40,48 @@ export default async function handler(req, res) {
               }
             }
           }
-          `,
+        `,
         }),
       }
     );
 
-    const data = await shopifyRes.json();
+    const shopData = await shopRes.json();
+    const products = shopData.data.products.edges.map(e => e.node);
 
-    const products = data?.data?.products?.edges?.map(e => e.node) || [];
-
-    // 🔥 matching mejorado
-    const q = query.toLowerCase();
-
-    const scored = products.map(p => {
-      const text = (p.title + " " + p.description).toLowerCase();
-
-      let score = 0;
-
-      if (text.includes(q)) score += 3;
-
-      const words = q.split(" ");
-      words.forEach(w => {
-        if (text.includes(w)) score += 1;
-      });
-
-      return { ...p, score };
+    // 🔹 2. IA (elige 3 productos)
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "Elige 3 productos relevantes según la intención del usuario.",
+          },
+          {
+            role: "user",
+            content: `Usuario: ${query}
+Productos: ${products.map(p => p.title).join(", ")}`,
+          },
+        ],
+      }),
     });
 
-    const sorted = scored
-      .sort((a, b) => b.score - a.score)
-      .filter(p => p.score > 0);
+    const aiData = await aiRes.json();
+    const text = aiData.choices[0].message.content;
 
-    const results =
-      sorted.length > 0
-        ? sorted.slice(0, 3)
-        : products.slice(0, 3);
+    // 🔹 3. filtrar productos
+    const selected = products.filter(p =>
+      text.toLowerCase().includes(p.title.toLowerCase())
+    ).slice(0, 3);
 
-    res.status(200).json(results);
+    return res.status(200).json(selected);
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server error" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 }
