@@ -1,68 +1,46 @@
 export default async function handler(req, res) {
 
-  // permitir POST desde Shopify
+  // ✅ CORS (CLAVE)
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // 🔴 IMPORTANTE: manejar preflight
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Use POST" });
   }
 
   try {
+
     const { query } = req.body;
 
-    const SHOP = process.env.SHOPIFY_STORE_DOMAIN;
-    const TOKEN = process.env.SHOPIFY_STOREFRONT_TOKEN;
-
-    // 🔹 1. traer productos reales
-    const response = await fetch(`https://${SHOP}/api/2024-01/graphql.json`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Storefront-Access-Token": TOKEN,
+    // 👉 TEST SIMPLE (luego metemos IA real)
+    return res.status(200).json([
+      {
+        title: "Balkon Relax Set",
+        handle: "balcony-relax-set",
+        variants: { edges: [{ node: { price: { amount: 49.99 }}}]},
+        images: { edges: [] }
       },
-      body: JSON.stringify({
-        query: `
-        {
-          products(first: 20) {
-            edges {
-              node {
-                title
-                handle
-                description
-                images(first:1){
-                  edges{ node{ url } }
-                }
-                variants(first:1){
-                  edges{ node{ price{ amount } } }
-                }
-              }
-            }
-          }
-        }
-        `,
-      }),
-    });
-
-    const data = await response.json();
-
-    const products = data?.data?.products?.edges?.map(e => e.node) || [];
-
-    // 🔹 2. filtro simple (estable)
-    const q = query.toLowerCase();
-
-    const filtered = products.filter(p =>
-      (p.title + " " + p.description).toLowerCase().includes(q)
-    );
-
-    // 🔹 3. fallback SIEMPRE muestra algo
-    const results = (filtered.length > 0 ? filtered : products).slice(0, 3);
-
-    return res.status(200).json(results);
+      {
+        title: "Kräuter Set",
+        handle: "krauter-set",
+        variants: { edges: [{ node: { price: { amount: 29.99 }}}]},
+        images: { edges: [] }
+      },
+      {
+        title: "Lichter Balkon Set",
+        handle: "lichter-set",
+        variants: { edges: [{ node: { price: { amount: 19.99 }}}]},
+        images: { edges: [] }
+      }
+    ]);
 
   } catch (error) {
-    console.error(error);
     return res.status(500).json({ error: "Server error" });
   }
 }
